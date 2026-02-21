@@ -67,31 +67,20 @@
       border-radius: 99px;
     }
 
-    /* ── Animated background ────────────────────────────────────── */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      background:
-        radial-gradient(ellipse 80% 60% at 20% -10%, rgba(124, 92, 252, .18) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 50% at 80% 110%, rgba(0, 212, 255, .12) 0%, transparent 60%);
-      pointer-events: none;
-    }
+
 
     /* ── Top bar ────────────────────────────────────────────────── */
     header {
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(14, 17, 23, .85);
-      backdrop-filter: blur(18px);
+      background: rgba(14, 17, 23, .96);
       border-bottom: 1px solid var(--border);
       padding: 0 2rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 64px;
+      height: 58px;
     }
 
     .logo {
@@ -101,10 +90,7 @@
     }
 
     .logo-icon {
-      font-size: 1.6rem;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      font-size: 1.3rem;
     }
 
     .logo-text {
@@ -124,13 +110,30 @@
     }
 
     .badge {
-      font-size: .75rem;
+      font-size: .72rem;
       font-weight: 600;
-      letter-spacing: .04em;
-      padding: .3rem .85rem;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border-radius: 99px;
-      color: #fff;
+      padding: .25rem .7rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-sec);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .by-link {
+      font-size: .75rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color .2s;
+    }
+
+    .by-link:hover {
+      color: var(--text-sec);
     }
 
     /* ── Page wrapper ───────────────────────────────────────────── */
@@ -175,9 +178,8 @@
     }
 
     .tab-btn.active {
-      background: linear-gradient(135deg, var(--accent), #5a3fd4);
+      background: var(--accent);
       color: #fff;
-      box-shadow: 0 4px 16px rgba(124, 92, 252, .35);
     }
 
     /* ── Tab panels ─────────────────────────────────────────────── */
@@ -228,14 +230,7 @@
       margin-bottom: .85rem;
     }
 
-    .section-label::before {
-      content: '';
-      display: inline-block;
-      width: 3px;
-      height: 14px;
-      background: linear-gradient(180deg, var(--accent), var(--accent2));
-      border-radius: 2px;
-    }
+
 
     /* ── Drop zone ──────────────────────────────────────────────── */
     .drop-zone {
@@ -453,17 +448,16 @@
 
     .btn-primary {
       width: 100%;
-      background: linear-gradient(135deg, var(--accent), #5a3fd4);
+      background: var(--accent);
       color: #fff;
-      box-shadow: 0 4px 20px rgba(124, 92, 252, .35);
-      padding: .95rem;
-      font-size: 1rem;
-      letter-spacing: .02em;
+      box-shadow: 0 2px 10px rgba(124, 92, 252, .25);
+      padding: .9rem;
+      font-size: .95rem;
     }
 
     .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 28px rgba(124, 92, 252, .5);
+      background: #6b4ee0;
+      transform: translateY(-1px);
     }
 
     .btn-primary:active {
@@ -472,17 +466,16 @@
 
     .btn-teal {
       width: 100%;
-      background: linear-gradient(135deg, #007a9a, var(--accent2));
+      background: #0891a8;
       color: #fff;
-      box-shadow: 0 4px 20px rgba(0, 212, 255, .25);
-      padding: .95rem;
-      font-size: 1rem;
-      letter-spacing: .02em;
+      box-shadow: 0 2px 10px rgba(0, 212, 255, .15);
+      padding: .9rem;
+      font-size: .95rem;
     }
 
     .btn-teal:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 28px rgba(0, 212, 255, .4);
+      background: #077d93;
+      transform: translateY(-1px);
     }
 
     .btn-ghost {
@@ -750,32 +743,29 @@
 
 <body>
 
-  <!-- ── HEADER ─────────────────────────────────────────────────────── -->
+  <!-- header -->
   <header>
     <div class="logo">
       <span class="logo-icon">🔐</span>
       <div class="logo-text">
         <span class="logo-title">StegoCrypt</span>
-        <span class="logo-sub">Hide secrets in plain sight</span>
+        <span class="logo-sub">hide messages in images</span>
       </div>
     </div>
-    <span class="badge">LSB Steganography</span>
+    <div class="header-right">
+      <span class="badge">LSB steganography</span>
+      <a class="by-link" href="https://github.com/agucchristopher" target="_blank" rel="noopener">by Agu Christopher</a>
+    </div>
   </header>
 
   <!-- ── MAIN ───────────────────────────────────────────────────────── -->
   <main>
 
-    <!-- Tab nav -->
+    <!-- tabs -->
     <nav class="tabs" role="tablist">
-      <button class="tab-btn active" onclick="switchTab('encode')" id="tab-encode" role="tab">
-        🔒 Encode (Hide)
-      </button>
-      <button class="tab-btn" onclick="switchTab('decode')" id="tab-decode" role="tab">
-        🔓 Decode (Reveal)
-      </button>
-      <button class="tab-btn" onclick="switchTab('about')" id="tab-about" role="tab">
-        ℹ️ About
-      </button>
+      <button class="tab-btn active" onclick="switchTab('encode')" id="tab-encode" role="tab">Encode</button>
+      <button class="tab-btn" onclick="switchTab('decode')" id="tab-decode" role="tab">Decode</button>
+      <button class="tab-btn" onclick="switchTab('about')" id="tab-about" role="tab">About</button>
     </nav>
 
     <!-- ═══════════════════════════════════════════════════════════════
@@ -1214,6 +1204,8 @@
       return (b / 1048576).toFixed(1) + ' MB';
     }
   </script>
+  </main>
+
 
 </body>
 
