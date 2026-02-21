@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StegoCrypt — Steganography Image Tool</title>
+  <meta name="description"
+    content="Hide secret messages inside images using LSB steganography with optional password protection." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+    rel="stylesheet" />
+  <style>
+    /* ── Reset & Tokens ─────────────────────────────────────────── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #080b12;
+      --bg-panel: #0e1117;
+      --bg-card: #131926;
+      --bg-input: #181f2e;
+      --bg-hover: #1c2435;
+      --accent: #7c5cfc;
+      --accent2: #00d4ff;
+      --success: #00e676;
+      --error: #ff5252;
+      --warning: #ffd740;
+      --text: #eaeef8;
+      --text-sec: #8892a4;
+      --text-muted: #3f4a5e;
+      --border: #1e2638;
+      --radius: 14px;
+      --radius-sm: 8px;
+      --shadow: 0 8px 32px rgba(0, 0, 0, .45);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Scrollbar ──────────────────────────────────────────────── */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-panel);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--accent);
+      border-radius: 99px;
+    }
+
+    /* ── Animated background ────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% -10%, rgba(124, 92, 252, .18) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 110%, rgba(0, 212, 255, .12) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* ── Top bar ────────────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(14, 17, 23, .85);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+
+    .logo-icon {
+      font-size: 1.6rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logo-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+
+    .logo-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .logo-sub {
+      font-size: .72rem;
+      color: var(--text-sec);
+    }
+
+    .badge {
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      padding: .3rem .85rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 99px;
+      color: #fff;
+    }
+
+    /* ── Page wrapper ───────────────────────────────────────────── */
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+    }
+
+    /* ── Tab nav ────────────────────────────────────────────────── */
+    .tabs {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: 2rem;
+      background: var(--bg-panel);
+      padding: .4rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      padding: .65rem 1rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-sec);
+      font-family: inherit;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .22s ease;
+    }
+
+    .tab-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--accent), #5a3fd4);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(124, 92, 252, .35);
+    }
+
+    /* ── Tab panels ─────────────────────────────────────────────── */
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* ── Two-column layout ──────────────────────────────────────── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 780px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Cards ──────────────────────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      transition: border-color .2s;
+    }
+
+    .card:hover {
+      border-color: rgba(124, 92, 252, .35);
+    }
+
+    /* ── Section labels ─────────────────────────────────────────── */
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-sec);
+      margin-bottom: .85rem;
+    }
+
+    .section-label::before {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 14px;
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      border-radius: 2px;
+    }
+
+    /* ── Drop zone ──────────────────────────────────────────────── */
+    .drop-zone {
+      position: relative;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all .22s ease;
+      background: var(--bg-input);
+      overflow: hidden;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(124, 92, 252, .07);
+      box-shadow: inset 0 0 0 1px rgba(124, 92, 252, .2);
+    }
+
+    .drop-zone input[type=file] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .drop-icon {
+      font-size: 2.4rem;
+      margin-bottom: .5rem;
+      display: block;
+    }
+
+    .drop-title {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .drop-sub {
+      font-size: .8rem;
+      color: var(--text-sec);
+      margin-top: .25rem;
+    }
+
+    /* ── Image preview ──────────────────────────────────────────── */
+    .img-preview-wrap {
+      margin-top: 1rem;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      min-height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .img-preview-wrap img {
+      max-width: 100%;
+      max-height: 260px;
+      display: block;
+      object-fit: contain;
+    }
+
+    .img-preview-wrap .no-preview {
+      color: var(--text-muted);
+      font-size: .85rem;
+      padding: 2rem;
+    }
+
+    .img-meta {
+      margin-top: .6rem;
+      font-size: .78rem;
+      color: var(--text-sec);
+      display: flex;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+
+    .img-meta span {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: .15rem .65rem;
+    }
+
+    /* ── Capacity bar ───────────────────────────────────────────── */
+    .capacity-wrap {
+      margin-top: 1rem;
+    }
+
+    .capacity-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: .78rem;
+      color: var(--text-sec);
+      margin-bottom: .35rem;
+    }
+
+    .capacity-header span {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .progress-track {
+      height: 6px;
+      background: var(--bg-input);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 99px;
+      transition: width .4s ease;
+    }
+
+    /* ── Inputs ─────────────────────────────────────────────────── */
+    label.field-lbl {
+      display: block;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--text-sec);
+      margin-bottom: .4rem;
+    }
+
+    textarea,
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: inherit;
+      font-size: .93rem;
+      padding: .75rem 1rem;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      resize: vertical;
+    }
+
+    textarea:focus,
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124, 92, 252, .2);
+    }
+
+    textarea {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .88rem;
+      min-height: 160px;
+    }
+
+    .char-count {
+      text-align: right;
+      font-size: .75rem;
+      color: var(--text-sec);
+      margin-top: .3rem;
+    }
+
+    .char-count.warn {
+      color: var(--warning);
+    }
+
+    .char-count.over {
+      color: var(--error);
+    }
+
+    /* Password row */
+    .pass-wrap {
+      position: relative;
+    }
+
+    .pass-wrap input {
+      padding-right: 3.2rem;
+    }
+
+    .pass-toggle {
+      position: absolute;
+      right: .75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-sec);
+      font-size: 1.1rem;
+      transition: color .2s;
+    }
+
+    .pass-toggle:hover {
+      color: var(--accent);
+    }
+
+    /* ── Buttons ────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      padding: .75rem 1.5rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: .93rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .22s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent), #5a3fd4);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(124, 92, 252, .35);
+      padding: .95rem;
+      font-size: 1rem;
+      letter-spacing: .02em;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(124, 92, 252, .5);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-teal {
+      width: 100%;
+      background: linear-gradient(135deg, #007a9a, var(--accent2));
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(0, 212, 255, .25);
+      padding: .95rem;
+      font-size: 1rem;
+      letter-spacing: .02em;
+    }
+
+    .btn-teal:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(0, 212, 255, .4);
+    }
+
+    .btn-ghost {
+      background: var(--bg-hover);
+      color: var(--text-sec);
+      border: 1px solid var(--border);
+      font-size: .82rem;
+      padding: .45rem .9rem;
+    }
+
+    .btn-ghost:hover {
+      color: var(--text);
+      border-color: var(--accent);
+    }
+
+    .btn-icon {
+      background: rgba(124, 92, 252, .15);
+      color: var(--accent);
+      border: 1px solid rgba(124, 92, 252, .3);
+      padding: .45rem .9rem;
+      font-size: .82rem;
+      border-radius: var(--radius-sm);
+    }
+
+    .btn-icon:hover {
+      background: rgba(124, 92, 252, .3);
+    }
+
+    /* ── Status alerts ──────────────────────────────────────────── */
+    .alert {
+      display: none;
+      padding: .85rem 1.1rem;
+      border-radius: var(--radius-sm);
+      font-size: .88rem;
+      font-weight: 500;
+      margin-top: 1rem;
+      border-left: 3px solid;
+      animation: fadeIn .3s ease;
+    }
+
+    .alert.show {
+      display: flex;
+      align-items: flex-start;
+      gap: .6rem;
+    }
+
+    .alert-success {
+      background: rgba(0, 230, 118, .1);
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .alert-error {
+      background: rgba(255, 82, 82, .1);
+      border-color: var(--error);
+      color: var(--error);
+    }
+
+    .alert-warning {
+      background: rgba(255, 215, 64, .1);
+      border-color: var(--warning);
+      color: var(--warning);
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ── Decoded output ─────────────────────────────────────────── */
+    .decoded-wrapper {
+      margin-top: 1.25rem;
+    }
+
+    .decoded-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .5rem;
+    }
+
+    .decoded-box {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .88rem;
+      color: var(--success);
+      min-height: 120px;
+      max-height: 320px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.6;
+    }
+
+    .decoded-box:empty::before {
+      content: 'No message decoded yet…';
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* ── Download button ────────────────────────────────────────── */
+    .download-row {
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .download-row.show {
+      display: flex;
+      gap: .75rem;
+    }
+
+    .btn-download {
+      flex: 1;
+      background: linear-gradient(135deg, #006b30, var(--success));
+      color: #fff;
+      font-weight: 700;
+      padding: .75rem;
+      border-radius: var(--radius-sm);
+      text-align: center;
+      text-decoration: none;
+      font-family: inherit;
+      font-size: .88rem;
+      border: none;
+      cursor: pointer;
+      transition: all .22s;
+    }
+
+    .btn-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 230, 118, .3);
+    }
+
+    /* ── About tab ──────────────────────────────────────────────── */
+    .about-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-top: 2rem;
+    }
+
+    .about-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+
+    .about-card h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: .75rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .about-card p,
+    .about-card li {
+      font-size: .87rem;
+      color: var(--text-sec);
+      line-height: 1.7;
+    }
+
+    .about-card ul {
+      padding-left: 1.2rem;
+    }
+
+    .hero-about {
+      text-align: center;
+      padding: 3rem 1rem 1.5rem;
+    }
+
+    .hero-about h1 {
+      font-size: 2.8rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--text), var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: .5rem;
+    }
+
+    .hero-about p {
+      color: var(--text-sec);
+      font-size: 1.05rem;
+    }
+
+    .warning-box {
+      background: rgba(255, 215, 64, .08);
+      border: 1px solid rgba(255, 215, 64, .3);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.25rem;
+      color: var(--warning);
+      font-size: .87rem;
+      line-height: 1.6;
+      margin-top: 2rem;
+      display: flex;
+      gap: .75rem;
+      align-items: flex-start;
+    }
+
+    /* ── Loader spinner ─────────────────────────────────────────── */
+    .spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 255, 255, .3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    .spinner.show {
+      display: block;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ── Thumbnail previews ─────────────────────────────────────── */
+    .stego-preview-wrap {
+      display: none;
+    }
+
+    .stego-preview-wrap.show {
+      display: block;
+    }
+
+    /* ── Utility ────────────────────────────────────────────────── */
+    .mt-1 {
+      margin-top: .5rem;
+    }
+
+    .mt-2 {
+      margin-top: 1rem;
+    }
+
+    .mt-3 {
+      margin-top: 1.5rem;
+    }
+
+    .gap-1 {
+      display: flex;
+      gap: .5rem;
+    }
+
+    .full {
+      width: 100%;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ── HEADER ─────────────────────────────────────────────────────── -->
+  <header>
+    <div class="logo">
+      <span class="logo-icon">🔐</span>
+      <div class="logo-text">
+        <span class="logo-title">StegoCrypt</span>
+        <span class="logo-sub">Hide secrets in plain sight</span>
+      </div>
+    </div>
+    <span class="badge">LSB Steganography</span>
+  </header>
+
+  <!-- ── MAIN ───────────────────────────────────────────────────────── -->
+  <main>
+
+    <!-- Tab nav -->
+    <nav class="tabs" role="tablist">
+      <button class="tab-btn active" onclick="switchTab('encode')" id="tab-encode" role="tab">
+        🔒 Encode (Hide)
+      </button>
+      <button class="tab-btn" onclick="switchTab('decode')" id="tab-decode" role="tab">
+        🔓 Decode (Reveal)
+      </button>
+      <button class="tab-btn" onclick="switchTab('about')" id="tab-about" role="tab">
+        ℹ️ About
+      </button>
+    </nav>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+       ENCODE TAB
+  ════════════════════════════════════════════════════════════════ -->
+    <section class="tab-panel active" id="panel-encode">
+      <div class="two-col">
+
+        <!-- Left: carrier image -->
+        <div class="card">
+          <p class="section-label">1 · Select Carrier Image</p>
+
+          <div class="drop-zone" id="enc-drop" ondragover="onDragOver(event,'enc-drop')"
+            ondragleave="onDragLeave('enc-drop')" ondrop="onDrop(event,'enc-file','enc-drop')">
+            <input type="file" id="enc-file" accept="image/*" onchange="onEncImageSelected()" />
+            <span class="drop-icon">🖼️</span>
+            <p class="drop-title">Click or drag an image here</p>
+            <p class="drop-sub">PNG, BMP, TIFF recommended — JPEG also accepted</p>
+          </div>
+
+          <div class="img-preview-wrap" id="enc-preview-wrap">
+            <p class="no-preview" id="enc-no-preview">Preview will appear here</p>
+            <img id="enc-preview-img" src="" alt="Preview" style="display:none;" />
+          </div>
+
+          <div class="img-meta" id="enc-meta" style="display:none;">
+            <span id="enc-meta-size"></span>
+            <span id="enc-meta-dims"></span>
+            <span id="enc-meta-mode"></span>
+          </div>
+
+          <!-- Capacity -->
+          <div class="capacity-wrap" id="enc-cap-wrap" style="display:none;">
+            <div class="capacity-header">
+              <span>Image Capacity</span>
+              <span id="enc-cap-val">—</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="enc-cap-bar" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: message + options -->
+        <div class="card">
+          <p class="section-label">2 · Enter Secret Message</p>
+          <textarea id="enc-message" placeholder="Type your secret message here…" oninput="updateCharCount()"
+            rows="7"></textarea>
+          <p class="char-count" id="enc-char-count">0 characters</p>
+
+          <p class="section-label mt-3">3 · Password (Optional)</p>
+          <div class="pass-wrap">
+            <input type="password" id="enc-password" placeholder="Leave blank for no encryption" />
+            <button class="pass-toggle" onclick="togglePass('enc-password',this)" title="Show/hide">👁</button>
+          </div>
+
+          <div class="mt-3">
+            <button class="btn btn-primary" onclick="doEncode()" id="enc-btn">
+              <div class="spinner" id="enc-spinner"></div>
+              🔒 Encode &amp; Hide Message
+            </button>
+          </div>
+
+          <div class="alert alert-success" id="enc-alert-ok"></div>
+          <div class="alert alert-error" id="enc-alert-err"></div>
+          <div class="alert alert-warning" id="enc-alert-warn"></div>
+
+          <!-- Download row -->
+          <div class="download-row" id="enc-download-row">
+            <a class="btn-download" id="enc-download-link" download>⬇ Download Stego-Image</a>
+          </div>
+
+          <!-- Stego preview -->
+          <div class="stego-preview-wrap mt-2" id="enc-stego-preview-wrap">
+            <p class="section-label">Output Preview</p>
+            <div class="img-preview-wrap">
+              <img id="enc-stego-preview-img" src="" alt="Stego preview" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+       DECODE TAB
+  ════════════════════════════════════════════════════════════════ -->
+    <section class="tab-panel" id="panel-decode">
+      <div class="two-col">
+
+        <!-- Left: stego image -->
+        <div class="card">
+          <p class="section-label">1 · Select Stego-Image</p>
+
+          <div class="drop-zone" id="dec-drop" ondragover="onDragOver(event,'dec-drop')"
+            ondragleave="onDragLeave('dec-drop')" ondrop="onDrop(event,'dec-file','dec-drop')">
+            <input type="file" id="dec-file" accept="image/*" onchange="onDecImageSelected()" />
+            <span class="drop-icon">🔍</span>
+            <p class="drop-title">Click or drag the stego-image here</p>
+            <p class="drop-sub">Use the image output by the Encode step</p>
+          </div>
+
+          <div class="img-preview-wrap" id="dec-preview-wrap">
+            <p class="no-preview" id="dec-no-preview">Preview will appear here</p>
+            <img id="dec-preview-img" src="" alt="Preview" style="display:none;" />
+          </div>
+
+          <div class="img-meta" id="dec-meta" style="display:none;">
+            <span id="dec-meta-size"></span>
+            <span id="dec-meta-dims"></span>
+          </div>
+        </div>
+
+        <!-- Right: decode controls + output -->
+        <div class="card">
+          <p class="section-label">2 · Password (Optional)</p>
+          <div class="pass-wrap">
+            <input type="password" id="dec-password" placeholder="Enter password if one was used" />
+            <button class="pass-toggle" onclick="togglePass('dec-password',this)" title="Show/hide">👁</button>
+          </div>
+
+          <div class="mt-3">
+            <button class="btn btn-teal" onclick="doDecode()" id="dec-btn">
+              <div class="spinner" id="dec-spinner"></div>
+              🔓 Decode &amp; Reveal Message
+            </button>
+          </div>
+
+          <div class="alert alert-success" id="dec-alert-ok"></div>
+          <div class="alert alert-error" id="dec-alert-err"></div>
+
+          <!-- Decoded output -->
+          <div class="decoded-wrapper mt-3">
+            <div class="decoded-header">
+              <p class="section-label" style="margin:0;">3 · Extracted Message</p>
+              <div class="gap-1">
+                <button class="btn btn-icon" onclick="copySecret()" title="Copy to clipboard">📋 Copy</button>
+                <button class="btn btn-ghost" onclick="clearDecode()" title="Clear">× Clear</button>
+              </div>
+            </div>
+            <div class="decoded-box" id="dec-output"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+       ABOUT TAB
+  ════════════════════════════════════════════════════════════════ -->
+    <section class="tab-panel" id="panel-about">
+      <div class="hero-about">
+        <h1>🔐 StegoCrypt</h1>
+        <p>Professional steganography tool — hide secret messages inside any image.</p>
+      </div>
+
+      <div class="about-grid">
+        <div class="about-card">
+          <h3>⚙️ Algorithm</h3>
+          <p>Uses <strong>LSB (Least Significant Bit)</strong> steganography. Each bit of your message overwrites the
+            least-significant bit of each R, G, B channel — giving 3 bits per pixel. The change is invisible to the
+            human eye.</p>
+        </div>
+        <div class="about-card">
+          <h3>🔑 Password Protection</h3>
+          <p>When a password is provided, the message is obfuscated with a <strong>Caesar Cipher</strong> (shift keyed
+            on the sum of character codes). Without the correct password, the extracted text is unreadable.</p>
+        </div>
+        <div class="about-card">
+          <h3>📐 Capacity</h3>
+          <ul>
+            <li>1 bit per RGB channel · 3 bits per pixel</li>
+            <li>1920 × 1080 ≈ <strong>777,600 characters</strong></li>
+            <li>4K (3840×2160) ≈ <strong>3.1 million characters</strong></li>
+          </ul>
+        </div>
+        <div class="about-card">
+          <h3>🖼️ Supported Formats</h3>
+          <ul>
+            <li><strong>PNG, BMP, TIFF</strong> — recommended (lossless)</li>
+            <li>JPEG — read OK, but save output as PNG!</li>
+            <li>Output is always saved as <strong>PNG</strong></li>
+          </ul>
+        </div>
+        <div class="about-card">
+          <h3>🛡️ Security Notes</h3>
+          <ul>
+            <li>The hidden message is not encrypted — only obfuscated</li>
+            <li>Use a strong password for better protection</li>
+            <li>Stego-images look identical to the originals</li>
+          </ul>
+        </div>
+        <div class="about-card">
+          <h3>🏗️ Tech Stack</h3>
+          <ul>
+            <li><strong>Backend:</strong> Python · Flask · Pillow</li>
+            <li><strong>Frontend:</strong> HTML · CSS · Vanilla JS</li>
+            <li><strong>Fonts:</strong> Inter · JetBrains Mono</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="warning-box">
+        <span style="font-size:1.2rem;">⚠️</span>
+        <div>
+          <strong>Always save output as PNG.</strong> JPEG compression uses lossy algorithms that destroy the hidden
+          bits — the message will become undecodable. The tool automatically saves stego-images as PNG files.
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── SCRIPTS ─────────────────────────────────────────────────────── -->
+  <script>
+    // switches between the three tabs (encode, decode, about)
+    // just removes 'active' from everything then adds it back to the right one
+    function switchTab(name) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('panel-' + name).classList.add('active');
+      document.getElementById('tab-' + name).classList.add('active');
+    }
+
+    // drag and drop stuff!! honestly took me forever to figure out DataTransfer lol
+    // but it works and it looks so much cooler than just a boring file picker
+    function onDragOver(e, id) {
+      e.preventDefault(); // gotta prevent default or the browser just opens the file
+      document.getElementById(id).classList.add('drag-over');
+    }
+    function onDragLeave(id) {
+      document.getElementById(id).classList.remove('drag-over'); // remove the highlight when they leave
+    }
+    function onDrop(e, inputId, dropId) {
+      e.preventDefault();
+      document.getElementById(dropId).classList.remove('drag-over');
+      const fi = document.getElementById(inputId);
+      // this trick makes it look like the file was picked from the input
+      // so the onchange handler fires automatically, pretty neat
+      const dt = new DataTransfer();
+      dt.items.add(e.dataTransfer.files[0]);
+      fi.files = dt.files;
+      fi.dispatchEvent(new Event('change'));
+    }
+
+    // show/hide password toggle - switches between text and password type
+    // also changes the emoji on the button so it's obvious what state it's in
+    function togglePass(inputId, btn) {
+      const inp = document.getElementById(inputId);
+      const showing = inp.type === 'text';
+      inp.type = showing ? 'password' : 'text';
+      btn.textContent = showing ? '👁' : '🚫';
+    }
+
+    // tracks how many characters you've typed vs how many the image can hold
+    // turns yellow when you're close to the limit and red if you go over
+    let _encCapacity = 0; // updated when an image gets loaded
+    function updateCharCount() {
+      const len = document.getElementById('enc-message').value.length;
+      const el = document.getElementById('enc-char-count');
+      if (_encCapacity > 0) {
+        el.textContent = `${len.toLocaleString()} / ${_encCapacity.toLocaleString()} characters`;
+        const pct = len / _encCapacity * 100;
+        document.getElementById('enc-cap-bar').style.width = Math.min(pct, 100) + '%'; // update the bar
+        el.className = 'char-count' + (pct > 100 ? ' over' : pct > 80 ? ' warn' : '');
+      } else {
+        el.textContent = `${len.toLocaleString()} characters`;
+        el.className = 'char-count';
+      }
+    }
+
+    // fires when the user picks an image on the encode tab
+    // sends it to /api/info to get the dimensions + capacity and show a preview
+    async function onEncImageSelected() {
+      const file = document.getElementById('enc-file').files[0];
+      if (!file) return; // nothing picked, bail out
+      const fd = new FormData();
+      fd.append('image', file);
+      try {
+        const res = await fetch('/api/info', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.success) {
+          showPreview('enc', data.preview, data.filename, file.size); // show thumbnail
+          _encCapacity = data.capacity_chars; // save capacity so the char counter can use it
+          document.getElementById('enc-meta-dims').textContent = `${data.width} × ${data.height} px`;
+          document.getElementById('enc-meta-mode').textContent = data.mode;
+          document.getElementById('enc-meta-size').textContent = formatBytes(file.size);
+          document.getElementById('enc-meta').style.display = 'flex';
+          document.getElementById('enc-cap-wrap').style.display = 'block';
+          document.getElementById('enc-cap-val').textContent = `≈ ${data.capacity_chars.toLocaleString()} chars`;
+          updateCharCount(); // refresh the counter now that we know the capacity
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    // same thing but for the decode tab - just get image info and show preview
+    // no need to track capacity here since we're just reading not writing
+    async function onDecImageSelected() {
+      const file = document.getElementById('dec-file').files[0];
+      if (!file) return;
+      const fd = new FormData();
+      fd.append('image', file);
+      try {
+        const res = await fetch('/api/info', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.success) {
+          showPreview('dec', data.preview, data.filename, file.size);
+          document.getElementById('dec-meta-dims').textContent = `${data.width} × ${data.height} px`;
+          document.getElementById('dec-meta-size').textContent = formatBytes(file.size);
+          document.getElementById('dec-meta').style.display = 'flex';
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    // helper to swap out the placeholder text with the actual image thumbnail
+    function showPreview(side, src, name, size) {
+      document.getElementById(side + '-no-preview').style.display = 'none';
+      const img = document.getElementById(side + '-preview-img');
+      img.src = src; img.style.display = 'block';
+    }
+
+    // THE BIG ONE - this sends the image + message to the server and hides the message
+    // uses FormData to send everything as multipart (required for file uploads)
+    async function doEncode() {
+      hideAlerts('enc'); // clear any old alerts from last time
+      const file = document.getElementById('enc-file').files[0];
+      const msg = document.getElementById('enc-message').value.trim();
+      const pass = document.getElementById('enc-password').value;
+
+      // validate before sending - don't waste a server request
+      if (!file) { showAlert('enc', 'warn', '⚠ Please select a carrier image first.'); return; }
+      if (!msg) { showAlert('enc', 'warn', '⚠ Please enter a secret message.'); return; }
+
+      setLoading('enc', true); // show spinner, disable button
+      const fd = new FormData();
+      fd.append('image', file);
+      fd.append('message', msg);
+      fd.append('password', pass);
+
+      try {
+        const res = await fetch('/api/encode', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (data.success) {
+          showAlert('enc', 'ok',
+            `✓ Message hidden! ${data.used.toLocaleString()} chars embedded into ${data.capacity.toLocaleString()} char capacity.`);
+
+          // set up the download button with the base64 image data
+          // clicking it will trigger a file download in the browser
+          const a = document.getElementById('enc-download-link');
+          a.href = data.stego_image;
+          a.download = data.filename;
+          document.getElementById('enc-download-row').classList.add('show');
+
+          // also show a preview of the output image so they can see it worked
+          document.getElementById('enc-stego-preview-img').src = data.preview;
+          document.getElementById('enc-stego-preview-wrap').classList.add('show');
+        } else {
+          showAlert('enc', 'err', '✗ ' + data.message);
+        }
+      } catch (e) {
+        showAlert('enc', 'err', '✗ Server error: ' + e.message); // network error or something
+      } finally {
+        setLoading('enc', false); // always re-enable the button
+      }
+    }
+
+    // does the reverse - takes the stego image and digs the secret out
+    // if they used a password when encoding they gotta enter it here too
+    async function doDecode() {
+      hideAlerts('dec');
+      const file = document.getElementById('dec-file').files[0];
+      const pass = document.getElementById('dec-password').value;
+
+      if (!file) { showAlert('dec', 'err', '⚠ Please select a stego-image first.'); return; }
+
+      setLoading('dec', true); // show the spinner
+      const fd = new FormData();
+      fd.append('image', file);
+      fd.append('password', pass);
+
+      try {
+        const res = await fetch('/api/decode', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (data.success) {
+          showAlert('dec', 'ok', '✓ ' + data.message);
+          document.getElementById('dec-output').textContent = data.secret;
+        } else {
+          showAlert('dec', 'err', '✗ ' + data.message);
+          document.getElementById('dec-output').textContent = '';
+        }
+      } catch (e) {
+        showAlert('dec', 'err', '✗ Server error: ' + e.message);
+      } finally {
+        setLoading('dec', false);
+      }
+    }
+
+    /* ── Copy / clear ──────────────────────────────────────────────── */
+    function copySecret() {
+      const text = document.getElementById('dec-output').textContent;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        showAlert('dec', 'ok', '✓ Copied to clipboard!');
+        setTimeout(() => hideAlerts('dec'), 2000);
+      });
+    }
+    function clearDecode() {
+      document.getElementById('dec-output').textContent = '';
+      hideAlerts('dec');
+    }
+
+    /* ── Helpers ───────────────────────────────────────────────────── */
+    function showAlert(side, type, msg) {
+      const map = { ok: 'alert-ok', err: 'alert-err', warn: 'alert-warn' };
+      const el = document.getElementById(side + '-' + map[type]);
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add('show');
+    }
+    function hideAlerts(side) {
+      ['alert-ok', 'alert-err', 'alert-warn'].forEach(k => {
+        const el = document.getElementById(side + '-' + k);
+        if (el) el.classList.remove('show');
+      });
+    }
+    function setLoading(side, on) {
+      const btn = document.getElementById(side + '-btn');
+      const spinner = document.getElementById(side + '-spinner');
+      btn.disabled = on;
+      spinner.classList.toggle('show', on);
+      btn.style.opacity = on ? '.7' : '1';
+    }
+    function formatBytes(b) {
+      if (b < 1024) return b + ' B';
+      if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+      return (b / 1048576).toFixed(1) + ' MB';
+    }
+  </script>
+
+</body>
+
+</html>
