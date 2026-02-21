@@ -52,26 +52,31 @@ def encode_message(image_path: str, message: str, output_path: str, password: st
         capacity_chars = capacity_bits // 8
 
         # if password is given, scramble the message with a caesar cipher
-        # nothing crazy secure but it's better than nothing i guess
-        payload = message
+        # IMPORTANT: we work on raw utf-8 bytes here, not unicode codepoints
+        # doing it on codepoints broke emojis because shifting them changes their byte length
+        # byte-level shift keeps everything the same size, way more reliable
+        payload_bytes = message.encode("utf-8")
         if password:
             shift = sum(ord(c) for c in password) % 256  # use the password to pick a shift amount
-            payload = "".join(chr((ord(c) + shift) % 65536) for c in message)
+            payload_bytes = bytes((b + shift) % 256 for b in payload_bytes)
 
         # tack on the delimiter so we know where the message ends when decoding
-        full_payload = payload + DELIMITER
+        full_payload_bytes = payload_bytes + DELIMITER.encode("utf-8")
 
-        bits = _text_to_bits(full_payload)
+        bits = []
+        for byte in full_payload_bytes:
+            for i in range(7, -1, -1):
+                bits.append((byte >> i) & 1)
         if len(bits) > capacity_bits:
             # image too small for the message, gotta let the user know
             return {
                 "success": False,
                 "message": (
                     f"Message too large! Image can hold ≈{capacity_chars - len(DELIMITER)} chars "
-                    f"but the message requires {len(full_payload)} chars."
+                    f"but the message requires {len(full_payload_bytes)} chars."
                 ),
                 "capacity": capacity_chars,
-                "used": len(full_payload),
+                "used": len(full_payload_bytes),
             }
 
         # flatten all the pixel channel values into one big list
@@ -95,7 +100,7 @@ def encode_message(image_path: str, message: str, output_path: str, password: st
             "success": True,
             "message": "Message successfully hidden in image! ✓",
             "capacity": capacity_chars,
-            "used": len(full_payload),
+            "used": len(full_payload_bytes),
         }
 
     except FileNotFoundError:
@@ -117,40 +122,51 @@ def decode_message(image_path: str, password: str = "") -> dict:
         img = Image.open(image_path).convert("RGB")
         pixels = list(img.getdata())
 
-        # grab all the LSBs from every channel value - these are our hidden bits
+        # read the raw bits back out
         flat_pixels = [channel for pixel in pixels for channel in pixel]
-        bits = [p & 1 for p in flat_pixels]  # just the last bit of each one
+        raw_bits = [p & 1 for p in flat_pixels]  # just the last bit of each one
 
-        # read bits one by one and rebuild characters
-        # stop as soon as we hit the delimiter - that's how we know we're done
-        extracted = []
+        # reconstruct bytes one at a time and stop when we hit the delimiter
+        delimiter_bytes = DELIMITER.encode("utf-8")
+        dlm_len_bits    = len(delimiter_bytes) * 8
+
         buffer = []
-        delimiter_bits = _text_to_bits(DELIMITER)
-        dlm_len = len(delimiter_bits)
+        payload_bytes  = bytearray()
+        found = False
 
-        for bit in bits:
+        for bit in raw_bits:
             buffer.append(bit)
-            if len(buffer) % 8 == 0 and len(buffer) >= dlm_len:
-                # every 8 bits, check if the last chunk matches our end marker
-                if buffer[-dlm_len:] == delimiter_bits:
-                    extracted = buffer[: -dlm_len]  # grab everything before the delimiter
-                    break
+            if len(buffer) == 8:
+                # got a full byte
+                byte = 0
+                for b in buffer:
+                    byte = (byte << 1) | b
+                payload_bytes.append(byte)
+                buffer = []
+                # check if the last len(delimiter_bytes) bytes match the delimiter
+                if len(payload_bytes) >= len(delimiter_bytes):
+                    if payload_bytes[-len(delimiter_bytes):] == delimiter_bytes:
+                        payload_bytes = payload_bytes[:-len(delimiter_bytes)]  # chop off delimiter
+                        found = True
+                        break
 
-        if not extracted:
-            # nothing found - either no message or wrong password
+        if not found:
             return {
                 "success": False,
                 "message": "No hidden message found in this image (or wrong password).",
                 "secret": None,
             }
 
-        payload = _bits_to_text(extracted)
-
-        # if a password was used, we gotta un-scramble it
-        # just reverse the shift from before
+        # if a password was used, un-scramble it by reversing the byte shift
         if password:
             shift = sum(ord(c) for c in password) % 256
-            payload = "".join(chr((ord(c) - shift) % 65536) for c in payload)
+            payload_bytes = bytes((b - shift) % 256 for b in payload_bytes)
+
+        # decode back to a string - if the password was wrong this'll look like garbage
+        try:
+            payload = payload_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            payload = payload_bytes.decode("latin-1")  # fallback so we don't crash
 
         return {"success": True, "message": "Message extracted successfully! ✓", "secret": payload}
 
